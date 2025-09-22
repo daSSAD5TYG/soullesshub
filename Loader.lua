@@ -1,9 +1,8 @@
--- Universal Loader with Fluent UI
+-- Universal Loader with Fluent UI + Execute Buttons
 repeat task.wait() until game:IsLoaded()
 
 local client = game.Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
-local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 -- Anti-AFK
@@ -13,48 +12,20 @@ client.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- Your GitHub repo
+-- GitHub repo
 local githubUser = "daSSAD5TYG"
 local githubRepo = "soullesshub"
 
--- URLs for loaders
-local baseUrl = ("https://raw.githubusercontent.com/%s/%s/refs/heads/main/%s/loader.lua"):format(githubUser, githubRepo, game.GameId)
-local base64url = ("https://api.github.com/repos/%s/%s/contents/%s/loader.lua?ref=main"):format(githubUser, githubRepo, game.GameId)
+local function loadGameLoader(gameId)
+    local baseUrl = ("https://raw.githubusercontent.com/%s/%s/refs/heads/main/%s/loader.lua"):format(githubUser, githubRepo, gameId)
+    local base64url = ("https://api.github.com/repos/%s/%s/contents/%s/loader.lua?ref=main"):format(githubUser, githubRepo, gameId)
 
--- Function to load Fluent UI
-local function createUI()
-    local success, Fluent = pcall(function()
-        return loadstring(game:HttpGetAsync("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-    end)
-
-    if success and Fluent then
-        local Window = Fluent:CreateWindow({
-            Title = "Soulless Hub",
-            SubTitle = "Universal Loader",
-            TabWidth = 160,
-            Size = UDim2.fromOffset(580, 340),
-            Acrylic = false,
-            Theme = "Dark"
-        })
-
-        -- Example default tab
-        local Tab = Window:AddTab({Title = "Main", Icon = "app"})
-        Tab:AddLabel("Welcome to Soulless Hub!")
-        Window:SelectTab(1)
-        return Fluent, Window
-    else
-        warn("[SoullessHub] Failed to load Fluent UI")
-    end
-end
-
--- Load the game-specific loader
-local function loadLoader()
     if base64 and base64.decode then
         local succ, err = pcall(function()
             local response = game:HttpGet(base64url)
             local data = HttpService:JSONDecode(response)
             local decoded = base64.decode(data.content:gsub("\n", ""))
-            print(("[SoullessHub] Loaded game %s from base64"):format(game.GameId))
+            print(("[SoullessHub] Loaded game %s from base64"):format(gameId))
             loadstring(decoded, "SoullessHub")()
         end)
         if not succ then
@@ -71,21 +42,52 @@ local function loadLoader()
     end
 end
 
--- Run Fluent UI
-createUI()
-
--- Run the loader
-loadLoader()
-
--- Handle teleports (auto re-run loader)
-if queue_on_teleport and not getgenv().SoullessHub then
-    getgenv().SoullessHub = true
-    client.OnTeleport:Once(function()
-        if getgenv().AutoExecCloudy then
-            queue_on_teleport(([[
-                getgenv().hookmetamethod = function() end
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/%s/%s/main/Loader.lua"), "SoullessHub")()
-            ]]):format(githubUser, githubRepo))
-        end
+-- Load Fluent UI
+local function createUI()
+    local success, Fluent = pcall(function()
+        return loadstring(game:HttpGetAsync("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
     end)
+
+    if not success or not Fluent then
+        warn("[SoullessHub] Failed to load Fluent UI")
+        return
+    end
+
+    local Window = Fluent:CreateWindow({
+        Title = "Soulless Hub",
+        SubTitle = "Universal Loader",
+        TabWidth = 160,
+        Size = UDim2.fromOffset(580, 340),
+        Acrylic = false,
+        Theme = "Dark"
+    })
+
+    local Tab = Window:AddTab({Title = "Main", Icon = "app"})
+    Tab:AddLabel("Welcome to Soulless Hub!")
+
+    -- Button: Detect Game ID
+    Tab:AddButton({
+        Title = "Detecting Game ID",
+        Description = "Automatically fetches loader for this game",
+        Callback = function()
+            loadGameLoader(game.GameId)
+        end
+    })
+
+    -- Button: Execute Anyways
+    Tab:AddButton({
+        Title = "Execute Anyways",
+        Description = "Run loader regardless of folder",
+        Callback = function()
+            local inputId = game.GameId
+            local prompt = Instance.new("ScreenGui")
+            inputId = tonumber(game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("Prompt"):GetAttribute("GameId")) or game.GameId
+            loadGameLoader(inputId)
+        end
+    })
+
+    Window:SelectTab(1)
 end
+
+-- Initialize UI
+createUI()
